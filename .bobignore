@@ -1,0 +1,24 @@
+# .bobignore
+# Files and directories Bob should not read, index, or include in context.
+
+# Build output
+.next/
+out/
+
+# Dependencies
+node_modules/
+
+# Bob session history (kept locally, not shared)
+bob_sessions/
+
+# Environment files that may contain secrets
+.env
+.env.local
+.env.*.local
+
+# Test coverage output
+coverage/
+
+# OS artefacts
+.DS_Store
+Thumbs.db

@@ -1,0 +1,29 @@
+{
+  "name": "verity-sample-app",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "verity": "npx tsx verity/run.ts",
+    "verity:probe": "vitest run --config vitest.probe.config.ts --reporter=verbose"
+  },
+  "dependencies": {
+    "next": "14.2.4",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.2",
+    "@types/react": "^18.3.3",
+    "@types/react-dom": "^18.3.0",
+    "@vitejs/plugin-react": "^4.3.0",
+    "@vitest/coverage-v8": "^1.6.0",
+    "tsx": "^4.23.15",
+    "typescript": "^5.4.5",
+    "vitest": "^1.6.0"
+  }
+}

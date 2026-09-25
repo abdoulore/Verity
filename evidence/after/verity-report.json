@@ -1,0 +1,183 @@
+{
+  "generatedAt": "2026-09-25T22:09:28.492Z",
+  "specFile": "docs/admin-csv-export.md",
+  "summary": {
+    "total": 8,
+    "verified": 8,
+    "failed": 0,
+    "uncertain": 0
+  },
+  "results": [
+    {
+      "id": "AC-01",
+      "text": "Requests that do not carry a valid admin bearer token must be rejected with HTTP 403 Forbidden. Applies to: missing Authorization header, tokens belonging to non-admin users, unrecognised tokens.",
+      "status": "VERIFIED",
+      "reason": "route.ts enforces admin-only auth with HTTP 403; all three forbidden scenarios are covered by tests.",
+      "evidence": [
+        {
+          "description": "route.ts auth guard check (getUserByToken + role check + 403 status)",
+          "filePath": "src/app/api/admin/export/route.ts",
+          "snippet": "getUserByToken(token) … if (!user || user.role !== \"admin\") { return … status: 403 }"
+        },
+        {
+          "description": "route.test.ts covers: missing header, viewer token, unrecognised token",
+          "filePath": "src/app/api/admin/export/route.test.ts",
+          "snippet": "✓ missing Authorization header | ✓ viewer token | ✓ unrecognised token"
+        }
+      ]
+    },
+    {
+      "id": "AC-02",
+      "text": "A successful response must: return HTTP 200, set Content-Type: text/csv, set Content-Disposition: attachment, and include a header row with all documented columns.",
+      "status": "VERIFIED",
+      "reason": "route.ts returns 200 with correct Content-Type and Content-Disposition; csv.ts defines all 8 columns in the specified order.",
+      "evidence": [
+        {
+          "description": "route.ts sets Content-Type: text/csv, Content-Disposition: attachment, status 200",
+          "filePath": "src/app/api/admin/export/route.ts",
+          "snippet": "✓ HTTP 200 | ✓ Content-Type: text/csv | ✓ Content-Disposition: attachment"
+        },
+        {
+          "description": "csv.ts CSV_HEADERS contains all 8 required columns in documented order",
+          "filePath": "src/lib/csv.ts",
+          "snippet": "✓ id, ✓ userId, ✓ product, ✓ quantity, ✓ unitPriceCents, ✓ status, ✓ createdAt, ✓ exportedAt | ✓ order correct"
+        },
+        {
+          "description": "route.test.ts verifies Content-Type, Content-Disposition, and all column headers",
+          "filePath": "src/app/api/admin/export/route.test.ts",
+          "snippet": "✓ Content-Type check | ✓ Content-Disposition check | ✓ all column headers checked"
+        }
+      ]
+    },
+    {
+      "id": "AC-03",
+      "text": "The server must return at most 10,000 data rows (excluding the header). Rows beyond this limit are silently truncated.",
+      "status": "VERIFIED",
+      "reason": "route.ts declares MAX_ROWS = 10_000 and truncates with .slice(0, MAX_ROWS); boundary exercised by a synthetic test.",
+      "evidence": [
+        {
+          "description": "route.ts defines MAX_ROWS = 10_000 and applies rows.slice(0, MAX_ROWS)",
+          "filePath": "src/app/api/admin/export/route.ts",
+          "snippet": "✓ MAX_ROWS = 10_000 declared | ✓ .slice(0, MAX_ROWS) applied"
+        },
+        {
+          "description": "Boundary test: synthetic array > 10,000 rows built and exact cap verified at slice",
+          "filePath": "src/app/api/admin/export/route.test.ts",
+          "snippet": "✓ boundary test: synthetic >10,000-row array constructed and slice verified"
+        },
+        {
+          "description": "Dataset boundary limitation: src/data/dataset.ts contains only 5 rows — route-level integration tests cannot reach the 10,000-row boundary without a synthetic fixture",
+          "filePath": "src/data/dataset.ts",
+          "snippet": "⚠ Live dataset has 5 rows. The MAX_ROWS constant and slice are verified by source inspection; the boundary is exercised only if a synthetic > 10,000-row test exists."
+        }
+      ]
+    },
+    {
+      "id": "AC-04",
+      "text": "If any supplied query parameter contains a value not in the documented allowed set, the server must respond with HTTP 400 Bad Request and a descriptive error message. Example: status=deleted is invalid.",
+      "status": "VERIFIED",
+      "reason": "route.ts validates the status parameter against VALID_STATUSES and returns HTTP 400 with a descriptive error for any invalid value.",
+      "evidence": [
+        {
+          "description": "route.ts VALID_STATUSES set + filter check returning 400",
+          "filePath": "src/app/api/admin/export/route.ts",
+          "snippet": "✓ VALID_STATUSES includes pending/shipped/cancelled | ✓ .has(statusFilter) guard present | ✓ status: 400 returned"
+        },
+        {
+          "description": "route.test.ts covers invalid status (400) and all three valid statuses (200)",
+          "filePath": "src/app/api/admin/export/route.test.ts",
+          "snippet": "✓ status=deleted → 400 tested | ✓ pending/shipped/cancelled → 200 tested"
+        }
+      ]
+    },
+    {
+      "id": "AC-05",
+      "text": "Every data row in the CSV must contain a non-empty, valid ISO 8601 exportedAt timestamp. The createdAt field must also be present and non-empty.",
+      "status": "VERIFIED",
+      "reason": "csv.ts stamps every row with exportedAt = new Date().toISOString() and maps r.createdAt; both are in CSV_HEADERS.",
+      "evidence": [
+        {
+          "description": "csv.ts generates exportedAt = new Date().toISOString() and includes createdAt",
+          "filePath": "src/lib/csv.ts",
+          "snippet": "✓ exportedAt = new Date().toISOString() | ✓ r.createdAt in row mapping | ✓ both in CSV_HEADERS"
+        },
+        {
+          "description": "dataset.ts OrderRecord type declares createdAt: string (ISO 8601)",
+          "filePath": "src/data/dataset.ts",
+          "snippet": "✓ createdAt: string; // ISO 8601 declared in OrderRecord"
+        },
+        {
+          "description": "route.test.ts checks exportedAt (ISO 8601 validated) and createdAt on every data row",
+          "filePath": "src/app/api/admin/export/route.test.ts",
+          "snippet": "✓ exportedAt ISO 8601 validation test present | ✓ createdAt presence test present"
+        }
+      ]
+    },
+    {
+      "id": "AC-06",
+      "text": "Each successful export request must persist an audit record before the response is sent. The record must include: authenticated user ID, UTC timestamp, filter parameters, row count. Failure to persist must return HTTP 500 rather than silently succeed.",
+      "status": "VERIFIED",
+      "reason": "All AC-06 probe assertions passed (exit 0). Run 'npm run verity:probe' to reproduce.",
+      "evidence": [
+        {
+          "description": "AC-06 acceptance probe file",
+          "filePath": "src/app/api/admin/export/ac06-audit.probe.ts",
+          "snippet": "✓ probe file exists"
+        },
+        {
+          "description": "Probe command",
+          "snippet": "npm run verity:probe"
+        },
+        {
+          "description": "Probe output (last 25 lines)",
+          "snippet": "> verity-sample-app@0.1.0 verity:probe\n> vitest run --config vitest.probe.config.ts --reporter=verbose\nThe CJS build of Vite's Node API is deprecated. See https://vite.dev/guide/troubleshooting.html#vite-cjs-node-api-deprecated for more details.\n RUN  v1.6.1 C:/Users/DELL/Documents/Verity\n ✓ src/app/api/admin/export/ac06-audit.probe.ts > AC-06 probe — audit record is persisted on successful export > getAuditRecords() returns exactly one record after a successful admin export\n ✓ src/app/api/admin/export/ac06-audit.probe.ts > AC-06 probe — audit record is persisted on successful export > the audit record contains the admin user ID\n ✓ src/app/api/admin/export/ac06-audit.probe.ts > AC-06 probe — audit record is persisted on successful export > the audit record contains a valid ISO 8601 exportedAt timestamp\n ✓ src/app/api/admin/export/ac06-audit.probe.ts > AC-06 probe — audit record is persisted on successful export > the audit record captures the filters passed with the request\n ✓ src/app/api/admin/export/ac06-audit.probe.ts > AC-06 probe — audit record is persisted on successful export > the audit record contains the row count of the exported data\n ✓ src/app/api/admin/export/ac06-audit.probe.ts > AC-06 probe — audit record is persisted on successful export > no audit record is created when the request is rejected (403)\n ✓ src/app/api/admin/export/ac06-audit.probe.ts > AC-06 probe — audit failure returns HTTP 500 > returns HTTP 500 when writeAuditRecord throws\n Test Files  1 passed (1)\n      Tests  7 passed (7)\n   Start at  23:09:25\n   Duration  720ms (transform 73ms, setup 0ms, collect 96ms, tests 91ms, environment 0ms, prepare 196ms)"
+        }
+      ]
+    },
+    {
+      "id": "AC-07",
+      "text": "When all filters are valid but no rows match, the server must return HTTP 200 with a CSV body that contains only the header row (no data rows). Content-Type must still be text/csv.",
+      "status": "VERIFIED",
+      "reason": "buildCsv([]) returns header-only CSV; route.ts sets text/csv unconditionally. Zero-match path tested.",
+      "evidence": [
+        {
+          "description": "csv.ts buildCsv returns [header, ...lines].join('\\n') — safe with zero rows",
+          "filePath": "src/lib/csv.ts",
+          "snippet": "✓ [header, ...lines].join(\"\\n\") → empty rows yields header-only CSV"
+        },
+        {
+          "description": "route.ts always sets Content-Type: text/csv (not conditional on row count)",
+          "filePath": "src/app/api/admin/export/route.ts",
+          "snippet": "✓ Content-Type: text/csv set unconditionally"
+        },
+        {
+          "description": "route.test.ts tests a request that matches zero rows",
+          "filePath": "src/app/api/admin/export/route.test.ts",
+          "snippet": "✓ zero-match test found (e.g., userId=user-nonexistent-xyz)"
+        }
+      ]
+    },
+    {
+      "id": "AC-08",
+      "text": "All tests in the project's automated test suite must pass with no failures before a pull request is merged. The suite is run with: npm test",
+      "status": "VERIFIED",
+      "reason": "npm test completed with exit code 0 and no failure indicators in output.",
+      "evidence": [
+        {
+          "description": "package.json defines a \"test\" script using vitest",
+          "filePath": "package.json",
+          "snippet": "✓ \"test\": \"vitest run\""
+        },
+        {
+          "description": "Test file exists at expected path",
+          "filePath": "src/app/api/admin/export/route.test.ts",
+          "snippet": "✓ file exists"
+        },
+        {
+          "description": "npm test execution result (last 30 lines of output)",
+          "snippet": "\u001b[32m✓\u001b[39m src/app/api/admin/export/route.test.ts\u001b[2m > \u001b[22mAC-02 – downloadable CSV with documented columns\u001b[2m > \u001b[22msets Content-Type to text/csv\n \u001b[32m✓\u001b[39m src/app/api/admin/export/route.test.ts\u001b[2m > \u001b[22mAC-02 – downloadable CSV with documented columns\u001b[2m > \u001b[22msets Content-Disposition to attachment\n \u001b[32m✓\u001b[39m src/app/api/admin/export/route.test.ts\u001b[2m > \u001b[22mAC-02 – downloadable CSV with documented columns\u001b[2m > \u001b[22mCSV first line contains all required column headers\n \u001b[32m✓\u001b[39m src/app/api/admin/export/route.test.ts\u001b[2m > \u001b[22mAC-03 – export limited to 10,000 rows\u001b[2m > \u001b[22mnever returns more than 10,000 data rows (header excluded)\n \u001b[32m✓\u001b[39m src/app/api/admin/export/route.test.ts\u001b[2m > \u001b[22mAC-04 – invalid filters return HTTP 400\u001b[2m > \u001b[22mreturns 400 for an unrecognised status value\n \u001b[32m✓\u001b[39m src/app/api/admin/export/route.test.ts\u001b[2m > \u001b[22mAC-04 – invalid filters return HTTP 400\u001b[2m > \u001b[22mreturns 400 for a numeric-only status value\n \u001b[32m✓\u001b[39m src/app/api/admin/export/route.test.ts\u001b[2m > \u001b[22mAC-04 – invalid filters return HTTP 400\u001b[2m > \u001b[22mreturns 200 for valid status=shipped\n \u001b[32m✓\u001b[39m src/app/api/admin/export/route.test.ts\u001b[2m > \u001b[22mAC-04 – invalid filters return HTTP 400\u001b[2m > \u001b[22mreturns 200 for valid status=pending\n \u001b[32m✓\u001b[39m src/app/api/admin/export/route.test.ts\u001b[2m > \u001b[22mAC-04 – invalid filters return HTTP 400\u001b[2m > \u001b[22mreturns 200 for valid status=cancelled\n \u001b[32m✓\u001b[39m src/app/api/admin/export/route.test.ts\u001b[2m > \u001b[22mAC-05 – each exported row includes a timestamp\u001b[2m > \u001b[22mevery data row has a non-empty exportedAt field\n \u001b[32m✓\u001b[39m src/app/api/admin/export/route.test.ts\u001b[2m > \u001b[22mAC-05 – each exported row includes a timestamp\u001b[2m > \u001b[22mevery data row also has a createdAt field\n \u001b[32m✓\u001b[39m src/app/api/admin/export/route.test.ts\u001b[2m > \u001b[22mAC-07 – no matching rows still returns valid CSV with headers\u001b[2m > \u001b[22mreturns 200 with header-only CSV when userId matches nothing\n \u001b[32m✓\u001b[39m src/app/api/admin/export/route.test.ts\u001b[2m > \u001b[22mAC-07 – no matching rows still returns valid CSV with headers\u001b[2m > \u001b[22mContent-Type is still text/csv even with zero data rows\n \u001b[32m✓\u001b[39m src/app/api/admin/export/route.test.ts\u001b[2m > \u001b[22mAC-08 – existing automated tests pass (meta-check)\u001b[2m > \u001b[22mthis test file itself is part of the automated suite\n \u001b[32m✓\u001b[39m verity/verity.test.ts\u001b[2m > \u001b[22mrenderJson — edge cases\u001b[2m > \u001b[22mall 8 AC IDs appear in a full report (AC-06 supplied as fixture, others real)\n \u001b[32m✓\u001b[39m verity/verity.test.ts\u001b[2m > \u001b[22mauditStore — contract interface\u001b[2m > \u001b[22mgetAuditRecords() returns an empty array initially\n \u001b[32m✓\u001b[39m verity/verity.test.ts\u001b[2m > \u001b[22mauditStore — contract interface\u001b[2m > \u001b[22mclearAuditRecords() resets the store after records were written\n \u001b[32m✓\u001b[39m verity/verity.test.ts\u001b[2m > \u001b[22mauditStore — contract interface\u001b[2m > \u001b[22mwriteAuditRecord() is an async function\n \u001b[32m✓\u001b[39m verity/verity.test.ts\u001b[2m > \u001b[22mauditStore — contract interface\u001b[2m > \u001b[22mAuditRecord shape has all four required fields\n \u001b[32m✓\u001b[39m verity/verity.test.ts\u001b[2m > \u001b[22mAC-06 probe contract — what must change for probe to pass\u001b[2m > \u001b[22mafter fix: writeAuditRecord must push one record to the store\n \u001b[32m✓\u001b[39m verity/verity.test.ts\u001b[2m > \u001b[22mAC-03 — boundary limitation is reported in evidence\u001b[2m > \u001b[22mcheckAC03 result includes evidence noting the 5-row dataset limitation\n \u001b[32m✓\u001b[39m verity/verity.test.ts\u001b[2m > \u001b[22mAC-03 — boundary limitation is reported in evidence\u001b[2m > \u001b[22mcheckAC03 evidence mentions the 5-row dataset explicitly\n \u001b[32m✓\u001b[39m verity/verity.test.ts\u001b[2m > \u001b[22mAC-03 — boundary limitation is reported in evidence\u001b[2m > \u001b[22mcheckAC03 evidence notes that boundary test uses a synthetic array\n\n\u001b[2m Test Files \u001b[22m \u001b[1m\u001b[32m2 passed\u001b[39m\u001b[22m\u001b[90m (2)\u001b[39m\n\u001b[2m      Tests \u001b[22m \u001b[1m\u001b[32m73 passed\u001b[39m\u001b[22m\u001b[90m (73)\u001b[39m\n\u001b[2m   Start at \u001b[22m 23:09:27\n\u001b[2m   Duration \u001b[22m 787ms\u001b[2m (transform 241ms, setup 0ms, collect 271ms, tests 235ms, environment 0ms, prepare 396ms)\u001b[22m"
+        }
+      ]
+    }
+  ]
+}

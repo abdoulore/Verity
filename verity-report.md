@@ -1,7 +1,7 @@
 # Verity — Verification Report
 
 **Spec:** `docs/string-utils.md`
-**Generated:** 2026-09-26T15:02:47.651Z
+**Generated:** 2026-09-26T15:24:30.277Z
 
 ## Summary
 

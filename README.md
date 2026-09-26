@@ -1,98 +1,49 @@
-# Verity Sample App
+# Verity
 
-A deliberately incomplete Next.js sample project used as a **test fixture** for the [Verity](../README.md) requirement-verification hackathon prototype.
+**The ticket says done. Verity proves it.**
 
----
+Verity is a prototype for checking a developer ticket against a working project. This demo uses an Admin CSV Export feature with eight acceptance criteria. The ordinary tests passed while the audit requirement was missing; Verity’s separate acceptance probe exposed the gap. After the audit fix, the same probe and verifier passed.
 
-## What this is
+## Demonstrated result
 
-Verity is a tool that checks whether a developer ticket has actually been implemented. This repository contains:
+| Check | Before repair | After repair |
+|---|---:|---:|
+| Ordinary tests | 73/73 passed | 73/73 passed |
+| AC-06 audit probe | 1/7 passed | 7/7 passed |
+| Verity requirements | 7/8 verified | 8/8 verified |
 
-| Path | Purpose |
-|------|---------|
-| `docs/admin-csv-export.md` | Written specification with 8 acceptance criteria (AC-01 – AC-08) |
-| `src/app/api/admin/export/route.ts` | Next.js route implementing the export endpoint |
-| `src/app/api/admin/export/route.test.ts` | Vitest test suite |
-| `src/data/dataset.ts` | Synthetic in-memory dataset (no real data) |
-| `src/lib/csv.ts` | CSV serialisation helper |
+The saved reports are in `evidence/before/` and `evidence/after/`. Bob IDE task summaries are in `bob_sessions/` as evidence of Bob usage.
 
-**AC-06 (every admin export creates an audit record) is intentionally unimplemented.** There is no test for it either. This gap is the signal that Verity should detect when it analyses this project.
+## What the prototype checks
 
----
+The ticket is `docs/admin-csv-export.md`. Verity assesses its eight defined acceptance criteria using source checks, existing tests, and an executable probe for audit recording. Each result is `VERIFIED`, `FAILED`, or `UNCERTAIN`, with evidence in JSON and Markdown reports.
 
-## Prerequisites
+This prototype has checkers written for the eight criteria in this sample project. It does not automatically support arbitrary tickets or repositories.
 
-- **Node.js 18+** (no Docker, no database, no external APIs or credentials required)
+## Run locally
 
----
-
-## Setup
+Requires Node.js and npm. No Docker, database, external API, or credentials are needed.
 
 ```bash
-# Install dependencies
-npm install
+npm ci
+npm test
+npm run verity:probe
+npm run verity
+npm run build
 ```
 
----
+`npm run verity` writes `verity-report.json` and `verity-report.md` in the project root. It exits with code 0 when all criteria are verified, 1 when a criterion fails, and 2 when none fail but at least one is uncertain.
 
-## Run the development server
+To try the sample API:
 
 ```bash
 npm run dev
-# Open http://localhost:3000
 ```
 
----
+Then request `http://localhost:3000/api/admin/export` with the header `Authorization: Bearer token-admin-alice`.
 
-## Run the tests
+## How Bob was used
 
-```bash
-npm test
-```
+IBM Bob IDE was used to build the sample project, implement Verity, investigate the failing audit requirement, and repair the export workflow. The task session summaries for relevant Bob tasks are included in `bob_sessions/`.
 
-Vitest will run all `*.test.ts` files. You should see output similar to:
-
-```
- ✓ src/app/api/admin/export/route.test.ts (N tests)
-```
-
----
-
-## Try the API manually
-
-With the dev server running:
-
-```bash
-# Valid admin export
-curl -H "Authorization: Bearer token-admin-alice" \
-     http://localhost:3000/api/admin/export
-
-# Filtered export (status=shipped)
-curl -H "Authorization: Bearer token-admin-alice" \
-     "http://localhost:3000/api/admin/export?status=shipped"
-
-# Should return 403 (viewer token)
-curl -H "Authorization: Bearer token-viewer-bob" \
-     http://localhost:3000/api/admin/export
-
-# Should return 400 (invalid filter)
-curl -H "Authorization: Bearer token-admin-alice" \
-     "http://localhost:3000/api/admin/export?status=deleted"
-```
-
----
-
-## Acceptance criteria status
-
-| AC   | Description                                              | Implemented | Tested |
-|------|----------------------------------------------------------|-------------|--------|
-| AC-01 | Only admins can export                                  | ✅ | ✅ |
-| AC-02 | Response is a downloadable CSV with documented columns  | ✅ | ✅ |
-| AC-03 | Export limited to 10,000 rows                           | ✅ | ✅ |
-| AC-04 | Invalid filters return HTTP 400                         | ✅ | ✅ |
-| AC-05 | Each exported row includes a timestamp                  | ✅ | ✅ |
-| AC-06 | Every admin export creates an audit record              | ❌ | ❌ |
-| AC-07 | Valid request with no matching rows returns CSV headers | ✅ | ✅ |
-| AC-08 | Existing automated tests pass                           | ✅ | ✅ |
-
-AC-06 is the gap Verity is designed to detect.
+The before and after reports preserve the key workflow: ordinary tests passed, the independent audit probe found a missing requirement, Bob repaired it, and the unchanged probe verified the result.

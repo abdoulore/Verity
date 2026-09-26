@@ -1,7 +1,7 @@
 # Verity — Verification Report
 
 **Spec:** `docs/admin-csv-export.md`
-**Generated:** 2026-09-25T22:33:16.041Z
+**Generated:** 2026-09-26T14:40:19.673Z
 
 ## Summary
 
@@ -133,8 +133,8 @@
    ✓ src/app/api/admin/export/ac06-audit.probe.ts > AC-06 probe — audit failure returns HTTP 500 > returns HTTP 500 when writeAuditRecord throws
    Test Files  1 passed (1)
         Tests  7 passed (7)
-     Start at  23:33:11
-     Duration  1.00s (transform 107ms, setup 0ms, collect 125ms, tests 135ms, environment 0ms, prepare 264ms)
+     Start at  15:40:16
+     Duration  664ms (transform 74ms, setup 0ms, collect 84ms, tests 106ms, environment 0ms, prepare 141ms)
   ```
 
 ---
@@ -175,20 +175,20 @@
   - `✓ file exists`
 - **npm test execution result (last 30 lines of output)**
   ```
-  [32m✓[39m src/app/api/admin/export/route.test.ts[2m > [22mAC-02 – downloadable CSV with documented columns[2m > [22msets Content-Type to text/csv
-   [32m✓[39m src/app/api/admin/export/route.test.ts[2m > [22mAC-02 – downloadable CSV with documented columns[2m > [22msets Content-Disposition to attachment
-   [32m✓[39m src/app/api/admin/export/route.test.ts[2m > [22mAC-02 – downloadable CSV with documented columns[2m > [22mCSV first line contains all required column headers
-   [32m✓[39m src/app/api/admin/export/route.test.ts[2m > [22mAC-03 – export limited to 10,000 rows[2m > [22mnever returns more than 10,000 data rows (header excluded)
-   [32m✓[39m src/app/api/admin/export/route.test.ts[2m > [22mAC-04 – invalid filters return HTTP 400[2m > [22mreturns 400 for an unrecognised status value
-   [32m✓[39m src/app/api/admin/export/route.test.ts[2m > [22mAC-04 – invalid filters return HTTP 400[2m > [22mreturns 400 for a numeric-only status value
-   [32m✓[39m src/app/api/admin/export/route.test.ts[2m > [22mAC-04 – invalid filters return HTTP 400[2m > [22mreturns 200 for valid status=shipped
-   [32m✓[39m src/app/api/admin/export/route.test.ts[2m > [22mAC-04 – invalid filters return HTTP 400[2m > [22mreturns 200 for valid status=pending
-   [32m✓[39m src/app/api/admin/export/route.test.ts[2m > [22mAC-04 – invalid filters return HTTP 400[2m > [22mreturns 200 for valid status=cancelled
-   [32m✓[39m src/app/api/admin/export/route.test.ts[2m > [22mAC-05 – each exported row includes a timestamp[2m > [22mevery data row has a non-empty exportedAt field
-   [32m✓[39m src/app/api/admin/export/route.test.ts[2m > [22mAC-05 – each exported row includes a timestamp[2m > [22mevery data row also has a createdAt field
+  [32m✓[39m src/app/api/admin/export/route.test.ts[2m > [22mAC-05 – each exported row includes a timestamp[2m > [22mevery data row also has a createdAt field
    [32m✓[39m src/app/api/admin/export/route.test.ts[2m > [22mAC-07 – no matching rows still returns valid CSV with headers[2m > [22mreturns 200 with header-only CSV when userId matches nothing
    [32m✓[39m src/app/api/admin/export/route.test.ts[2m > [22mAC-07 – no matching rows still returns valid CSV with headers[2m > [22mContent-Type is still text/csv even with zero data rows
    [32m✓[39m src/app/api/admin/export/route.test.ts[2m > [22mAC-08 – existing automated tests pass (meta-check)[2m > [22mthis test file itself is part of the automated suite
+   [32m✓[39m verity/verity.test.ts[2m > [22mcheckAC06 — probe-based checker (mocked subprocess)[2m > [22mreturns id AC-06 (probe fails with exit 1)
+   [32m✓[39m verity/verity.test.ts[2m > [22mcheckAC06 — probe-based checker (mocked subprocess)[2m > [22mreturns FAILED when probe exits non-zero
+   [32m✓[39m verity/verity.test.ts[2m > [22mcheckAC06 — probe-based checker (mocked subprocess)[2m > [22mreason mentions probe exit code
+   [32m✓[39m verity/verity.test.ts[2m > [22mcheckAC06 — probe-based checker (mocked subprocess)[2m > [22mevidence includes the probe file path
+   [32m✓[39m verity/verity.test.ts[2m > [22mcheckAC06 — probe-based checker (mocked subprocess)[2m > [22mevidence includes the probe command string
+   [32m✓[39m verity/verity.test.ts[2m > [22mcheckAC06 — probe-based checker (mocked subprocess)[2m > [22mevidence includes the probe failure output
+   [32m✓[39m verity/verity.test.ts[2m > [22mcheckAC06 — probe-based checker (mocked subprocess)[2m > [22mreturns VERIFIED when probe exits 0
+   [32m✓[39m verity/verity.test.ts[2m > [22mcheckAC06 — probe-based checker (mocked subprocess)[2m > [22mreturns UNCERTAIN when probe cannot be spawned (no .status on error)
+   [32m✓[39m verity/verity.test.ts[2m > [22mrenderJson — edge cases[2m > [22mhandles a report with zero results
+   [32m✓[39m verity/verity.test.ts[2m > [22mrenderJson — edge cases[2m > [22mhandles results with empty evidence arrays
    [32m✓[39m verity/verity.test.ts[2m > [22mrenderJson — edge cases[2m > [22mall 8 AC IDs appear in a full report (AC-06 supplied as fixture, others real)
    [32m✓[39m verity/verity.test.ts[2m > [22mauditStore — contract interface[2m > [22mgetAuditRecords() returns an empty array initially
    [32m✓[39m verity/verity.test.ts[2m > [22mauditStore — contract interface[2m > [22mclearAuditRecords() resets the store after records were written
@@ -201,8 +201,8 @@
   
   [2m Test Files [22m [1m[32m2 passed[39m[22m[90m (2)[39m
   [2m      Tests [22m [1m[32m73 passed[39m[22m[90m (73)[39m
-  [2m   Start at [22m 23:33:14
-  [2m   Duration [22m 1.11s[2m (transform 339ms, setup 0ms, collect 364ms, tests 342ms, environment 1ms, prepare 583ms)[22m
+  [2m   Start at [22m 15:40:18
+  [2m   Duration [22m 811ms[2m (transform 215ms, setup 0ms, collect 241ms, tests 246ms, environment 0ms, prepare 385ms)[22m
   ```
 
 ---

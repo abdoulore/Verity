@@ -9,6 +9,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "verity": "npx tsx verity/run.ts",
+    "verity:pagination": "npx tsx verity/run.ts --task pagination-api",
     "verity:probe": "vitest run --config vitest.probe.config.ts --reporter=verbose"
   },
   "dependencies": {

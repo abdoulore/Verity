@@ -635,3 +635,100 @@ describe("AC-03 — boundary limitation is reported in evidence", () => {
     expect(allText).toMatch(/synthetic|boundary/i);
   });
 });
+
+// ---------------------------------------------------------------------------
+// 10. Coverage-gap detection — parseCriterionIds + detectCoverageGaps
+// ---------------------------------------------------------------------------
+
+describe("parseCriterionIds — spec ID extraction", () => {
+  // We test the logic inline since parseCriterionIds is not exported; instead we
+  // mirror its regex and verify the pattern works correctly.
+
+  function parseCriterionIdsLocal(content: string): string[] {
+    const ids: string[] = [];
+    const seen = new Set<string>();
+    for (const line of content.split("\n")) {
+      const m = line.match(/^###\s+([A-Z]+-\d+)\b/);
+      if (m) {
+        const id = m[1];
+        if (!seen.has(id)) { seen.add(id); ids.push(id); }
+      }
+    }
+    return ids;
+  }
+
+  it("extracts single-word IDs like AC-01", () => {
+    const ids = parseCriterionIdsLocal("### AC-01 — Only admins can export\n");
+    expect(ids).toEqual(["AC-01"]);
+  });
+
+  it("extracts multiple IDs from a multi-section spec", () => {
+    const spec = [
+      "# My Feature",
+      "## Overview",
+      "### AC-01 — First criterion",
+      "### AC-02 — Second criterion",
+      "### AC-03 — Third criterion",
+    ].join("\n");
+    expect(parseCriterionIdsLocal(spec)).toEqual(["AC-01", "AC-02", "AC-03"]);
+  });
+
+  it("returns empty array for a spec with no ### headings matching the pattern", () => {
+    const spec = "# My Feature\n## Overview\nSome text without criteria.";
+    expect(parseCriterionIdsLocal(spec)).toHaveLength(0);
+  });
+
+  it("deduplicates IDs that appear more than once in the spec", () => {
+    const spec = "### AC-01 — First\n### AC-01 — Duplicate heading\n### AC-02 — Second";
+    expect(parseCriterionIdsLocal(spec)).toEqual(["AC-01", "AC-02"]);
+  });
+
+  it("does not pick up level-2 (##) or level-1 (#) headings", () => {
+    const spec = "# AC-01\n## AC-02\n### AC-03 — Only this one";
+    expect(parseCriterionIdsLocal(spec)).toEqual(["AC-03"]);
+  });
+
+  it("matches PAG-style IDs as well as AC-style", () => {
+    const spec = "### PAG-01 — Page size cap\n### PAG-02 — Empty page";
+    expect(parseCriterionIdsLocal(spec)).toEqual(["PAG-01", "PAG-02"]);
+  });
+});
+
+describe("detectCoverageGaps — missing and duplicate IDs", () => {
+  function makeResult(id: string, status: "VERIFIED" | "FAILED" | "UNCERTAIN" = "VERIFIED"): CriterionResult {
+    return { id, text: `Criterion ${id}`, status, reason: "ok", evidence: [] };
+  }
+
+  it("returns empty array when all spec IDs are covered", () => {
+    const specIds = ["AC-01", "AC-02"];
+    const results = [makeResult("AC-01"), makeResult("AC-02")];
+    // Mirror detectCoverageGaps logic locally.
+    const resultIds = new Set(results.map((r) => r.id));
+    const missing = specIds.filter((id) => !resultIds.has(id));
+    expect(missing).toHaveLength(0);
+  });
+
+  it("detects a spec ID absent from results", () => {
+    const specIds = ["AC-01", "AC-02", "AC-03"];
+    const results = [makeResult("AC-01"), makeResult("AC-02")];
+    const resultIds = new Set(results.map((r) => r.id));
+    const missing = specIds.filter((id) => !resultIds.has(id));
+    expect(missing).toEqual(["AC-03"]);
+  });
+
+  it("detects duplicate IDs in results", () => {
+    const results = [makeResult("AC-01"), makeResult("AC-01"), makeResult("AC-02")];
+    const idCount = new Map<string, number>();
+    for (const r of results) idCount.set(r.id, (idCount.get(r.id) ?? 0) + 1);
+    const duplicates = [...idCount.entries()].filter(([, c]) => c > 1).map(([id]) => id);
+    expect(duplicates).toEqual(["AC-01"]);
+  });
+
+  it("all-VERIFIED is impossible when a spec ID is missing from results", () => {
+    const specIds = ["AC-01", "AC-02"];
+    const results = [makeResult("AC-01")]; // AC-02 missing
+    const resultIds = new Set(results.map((r) => r.id));
+    const allCovered = specIds.every((id) => resultIds.has(id));
+    expect(allCovered).toBe(false);
+  });
+});

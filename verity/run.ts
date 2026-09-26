@@ -14,6 +14,13 @@
  *   and reads the spec from     docs/<task-name>.md
  *   Each check file must export a default function: () => CriterionResult
  *
+ * Coverage-gap detection:
+ *   After running all checks, the runner parses the spec file for criterion IDs
+ *   (headings matching /###\s+([A-Z]+-\d+)/). Any ID found in the spec but
+ *   absent from the check results is injected as UNCERTAIN. A spec with no
+ *   recognisable criterion IDs, or a check set with duplicate IDs, also
+ *   triggers UNCERTAIN injection and is noted in the console.
+ *
  * Outputs:
  *   verity-report.json   — machine-readable report
  *   verity-report.md     — human-readable Markdown report
@@ -54,6 +61,104 @@ function parseTaskArg(): string | null {
     process.exit(3);
   }
   return name;
+}
+
+// ---------------------------------------------------------------------------
+// Spec parser — extract criterion IDs from the Markdown spec file.
+//
+// Recognised pattern: a level-3 heading  ###  WORD-NN  (e.g. ### AC-01)
+// Returns the ordered list of unique IDs found, or null if the spec file
+// cannot be read.
+// ---------------------------------------------------------------------------
+
+function parseCriterionIds(specFile: string): string[] | null {
+  const absPath = path.resolve(process.cwd(), specFile);
+  let content: string;
+  try {
+    content = fs.readFileSync(absPath, "utf8");
+  } catch {
+    return null;
+  }
+  const ids: string[] = [];
+  const seen = new Set<string>();
+  for (const line of content.split("\n")) {
+    const m = line.match(/^###\s+([A-Z]+-\d+)\b/);
+    if (m) {
+      const id = m[1];
+      if (!seen.has(id)) {
+        seen.add(id);
+        ids.push(id);
+      }
+    }
+  }
+  return ids;
+}
+
+// ---------------------------------------------------------------------------
+// Coverage-gap check — compare spec IDs against check results.
+//
+// Returns an array of synthetic UNCERTAIN results for any spec ID that has
+// no corresponding entry in `results`. Also detects duplicate result IDs and
+// appends a warning entry for each duplicate.
+// ---------------------------------------------------------------------------
+
+function detectCoverageGaps(
+  specIds: string[],
+  results: CriterionResult[]
+): CriterionResult[] {
+  const gaps: CriterionResult[] = [];
+
+  // Detect duplicate IDs among check results.
+  const idCount = new Map<string, number>();
+  for (const r of results) {
+    idCount.set(r.id, (idCount.get(r.id) ?? 0) + 1);
+  }
+  for (const [id, count] of idCount) {
+    if (count > 1) {
+      console.warn(
+        `⚠️  WARNING: criterion ID "${id}" appears ${count} times in check results — ` +
+        `duplicate IDs prevent an all-VERIFIED result.`
+      );
+      // Inject an UNCERTAIN entry so the run cannot exit 0.
+      gaps.push({
+        id: `${id}:DUPLICATE`,
+        text: `Duplicate criterion ID "${id}" detected in check results.`,
+        status: "UNCERTAIN",
+        reason: `The criterion ID "${id}" was returned by ${count} separate checks. ` +
+                `Duplicate IDs make it impossible to confirm full coverage. ` +
+                `Fix the check files so each ID is unique.`,
+        evidence: [
+          {
+            description: `Duplicate ID detected`,
+            snippet: `"${id}" appears ${count} times in results`,
+          },
+        ],
+      });
+    }
+  }
+
+  // Find spec IDs missing from results.
+  const resultIds = new Set(results.map((r) => r.id));
+  for (const specId of specIds) {
+    if (!resultIds.has(specId)) {
+      console.warn(`⚠️  WARNING: criterion "${specId}" is in the spec but has no check — marked UNCERTAIN.`);
+      gaps.push({
+        id: specId,
+        text: `Criterion ${specId} is defined in the spec but no check was executed for it.`,
+        status: "UNCERTAIN",
+        reason: `No check file produced a result for "${specId}". ` +
+                `Bob must draft a check for this criterion before Verity can verify it.`,
+        evidence: [
+          {
+            description: "Missing check",
+            snippet: `${specId} found in spec; absent from check results`,
+          },
+        ],
+      });
+    }
+  }
+
+  return gaps;
 }
 
 // ---------------------------------------------------------------------------
@@ -131,6 +236,45 @@ async function main(): Promise<void> {
       result.status === "VERIFIED" ? "✅" :
       result.status === "FAILED"   ? "❌" : "⚠️ ";
     console.log(`${icon}  ${result.id}  ${result.status}  —  ${result.reason}`);
+  }
+
+  // -------------------------------------------------------------------------
+  // Coverage-gap detection
+  // -------------------------------------------------------------------------
+
+  const specIds = parseCriterionIds(specFile);
+
+  if (specIds === null) {
+    console.warn(`⚠️  WARNING: spec file "${specFile}" could not be read — coverage cannot be verified.`);
+    results.push({
+      id: "SPEC:UNREADABLE",
+      text: `Spec file ${specFile} could not be read.`,
+      status: "UNCERTAIN",
+      reason: `The spec file could not be opened. Coverage gap detection was skipped. ` +
+              `Ensure docs/${taskName ?? "admin-csv-export"}.md exists.`,
+      evidence: [{ description: "Spec file not readable", snippet: specFile }],
+    });
+  } else if (specIds.length === 0) {
+    console.warn(
+      `⚠️  WARNING: spec file "${specFile}" contains no recognisable criterion IDs ` +
+      `(expected headings like "### AC-01"). An all-VERIFIED result is not possible.`
+    );
+    results.push({
+      id: "SPEC:NO-CRITERIA",
+      text: `Spec file ${specFile} has no recognisable criterion headings.`,
+      status: "UNCERTAIN",
+      reason: `No headings matching "### WORD-NN" were found in the spec. ` +
+              `Add labelled acceptance criteria (e.g. "### AC-01 — ...") so Verity can ` +
+              `detect coverage gaps.`,
+      evidence: [{ description: "No criterion IDs found in spec", snippet: specFile }],
+    });
+  } else {
+    const gaps = detectCoverageGaps(specIds, results);
+    if (gaps.length > 0) {
+      results.push(...gaps);
+      console.log("─".repeat(60));
+      console.log(`Coverage gaps: ${gaps.length} criterion/criteria without checks injected as UNCERTAIN.`);
+    }
   }
 
   const summary = {

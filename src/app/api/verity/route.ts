@@ -3,18 +3,30 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { spawn } from "node:child_process";
 import type { VerityReport } from "../../../../verity/types";
+import { renderMarkdown } from "../../../../verity/renderer";
+import pag01 from "../../../../verity/tasks/pagination-api/pag01";
+import pag02 from "../../../../verity/tasks/pagination-api/pag02";
+import pag03 from "../../../../verity/tasks/pagination-api/pag03";
+import su01 from "../../../../verity/tasks/string-utils/su01";
+import su02 from "../../../../verity/tasks/string-utils/su02";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 const root = process.cwd();
 const slug = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+// Serverless functions cannot execute the CLI or write its reports. These
+// bundled checks exercise actual source code and render the report in memory.
+const hosted = Boolean(process.env.VERCEL);
+const hostedTasks = { "pagination-api": [pag01, pag02, pag03], "string-utils": [su01, su02] };
 let running = false;
 
 async function tasks() {
-  const names = ["admin-csv-export"];
-  const entries = await fs.readdir(path.join(root, "verity/tasks"), { withFileTypes: true });
-  names.push(...entries.filter((entry) => entry.isDirectory() && slug.test(entry.name)).map((entry) => entry.name).sort());
+  const names = hosted ? Object.keys(hostedTasks) : ["admin-csv-export"];
+  if (!hosted) {
+    const entries = await fs.readdir(path.join(root, "verity/tasks"), { withFileTypes: true });
+    names.push(...entries.filter((entry) => entry.isDirectory() && slug.test(entry.name)).map((entry) => entry.name).sort());
+  }
   return Promise.all(names.map(async (name) => {
     const specFile = `docs/${name}.md`;
     const spec = await fs.readFile(path.join(root, specFile), "utf8").catch(() => "");
@@ -37,6 +49,20 @@ export async function POST(request: NextRequest) {
   }
   running = true;
   try {
+    if (hosted) {
+      const checkers = hostedTasks[name as keyof typeof hostedTasks];
+      const results = checkers.map(check => check());
+      const specFile = `docs/${name}.md`;
+      const expected = (await tasks()).find(task => task.name === name)!.criteria;
+      for (const id of expected) {
+        if (!results.some(result => result.id === id)) results.push({ id, text: `No check returned ${id}.`, status: "UNCERTAIN", reason: "This criterion has no executable check.", evidence: [] });
+      }
+      const report: VerityReport = { generatedAt: new Date().toISOString(), specFile,
+        summary: { total: results.length, verified: results.filter(result => result.status === "VERIFIED").length,
+          failed: results.filter(result => result.status === "FAILED").length,
+          uncertain: results.filter(result => result.status === "UNCERTAIN").length }, results };
+      return NextResponse.json({ report, markdown: renderMarkdown(report), exitCode: report.summary.failed ? 1 : report.summary.uncertain ? 2 : 0, output: "Bundled checks executed on the server." });
+    }
     const started = Date.now();
     const args = ["--import", "tsx", "verity/run.ts", ...(name === "admin-csv-export" ? [] : ["--task", name])];
     const outcome = await new Promise<{ code: number | null; output: string }>((resolve, reject) => {

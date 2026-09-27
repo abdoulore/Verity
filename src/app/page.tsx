@@ -27,7 +27,7 @@ export default function Home() {
     fetch("/api/verity").then(async response => {
       if (!response.ok) throw new Error("Could not load tasks.");
       return response.json();
-    }).then(data => setTasks(data.tasks)).catch(err => setError(err.message));
+    }).then(data => { setTasks(data.tasks); if (data.tasks.length) setSelected(data.tasks[0].name); }).catch(err => setError(err.message));
   }, []);
   const task = tasks.find(item => item.name === selected);
   const report = run?.report;

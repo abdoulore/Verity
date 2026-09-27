@@ -53,7 +53,11 @@ Each `verity` command writes `verity-report.json` and `verity-report.md` to the 
 
 Open `http://localhost:3000` after `npm run dev`. Select an audit in the sidebar and click **Run audit**. The dashboard runs the same CLI checks against this checkout, then displays counts, individual verdicts, reasons, and expandable evidence. Use **Specification** to inspect the source requirements, **Developer guide** to add a task, and download the JSON or Markdown report from **Results**. New tasks in `verity/tasks/<task-name>/` with a matching `docs/<task-name>.md` appear after a page reload; no UI code changes are required.
 
-The audit API executes project-owned check files and writes reports to this checkout. Run this dashboard only for a project you trust. It requires a writable, persistent Node.js process with dependencies installed; a static host or a serverless deployment with a read-only filesystem cannot execute the CLI runner. The browser cannot read a visitor's local repository from a remotely hosted site. To audit another project, install Verity there and run its dashboard locally.
+Locally, the audit API executes project-owned check files and writes reports to this checkout. Run it only for a project you trust. A static host or a serverless deployment with a read-only filesystem cannot execute the CLI runner, so the hosted demo below uses bundled checks instead. The browser cannot read a visitor's local repository from a remotely hosted site. To audit another project, install Verity there and run its dashboard locally.
+
+### Hosted demo
+
+Deploy the Next.js app on Vercel for a public, interactive demo. Its serverless dashboard runs the bundled Pagination API and String Utils checks against the deployed sample source code and creates reports in memory. The Admin CSV Export task includes a subprocess audit probe and is available only in the local dashboard or CLI. Visitors cannot upload or audit their own repository on the hosted demo; to audit a project, run Verity inside that project. The UI only lists tasks it can actually run in each environment.
 
 Exit codes: `0` = all VERIFIED · `1` = one or more FAILED · `2` = none failed but one or more UNCERTAIN.
 

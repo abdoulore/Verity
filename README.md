@@ -2,7 +2,7 @@
 
 **The ticket says done. Verity proves it.**
 
-Verity is a prototype for checking a developer ticket against a working project. A developer writes a spec in `docs/`, a set of executable checks in `verity/tasks/<task-name>/`, and runs Verity to receive a VERIFIED / FAILED / UNCERTAIN verdict per requirement — backed by real command output and assertion results as evidence.
+Verity checks a developer ticket against a working project. A developer writes a spec in `docs/`, a set of executable checks in `verity/tasks/<task-name>/`, and runs Verity to receive a VERIFIED / FAILED / UNCERTAIN verdict per requirement — backed by command output and assertion results as evidence. The web dashboard lets developers run and inspect these checks in the browser while the project runs locally.
 
 Verity does **not** automatically understand arbitrary requirements or prove correctness from source text alone. Each criterion requires a hand-written check that executes real code or commands.
 
@@ -44,9 +44,16 @@ npm run verity:probe        # AC-06 audit probe (7 assertions)
 npm run verity              # Admin CSV Export — 8 criteria
 npm run verity:pagination   # Pagination API   — 3 criteria
 npm run build               # Next.js production build
+npm run dev                 # Open http://localhost:3000 for the dashboard
 ```
 
 Each `verity` command writes `verity-report.json` and `verity-report.md` to the project root.
+
+### Web dashboard
+
+Open `http://localhost:3000` after `npm run dev`. Select an audit in the sidebar and click **Run audit**. The dashboard runs the same CLI checks against this checkout, then displays counts, individual verdicts, reasons, and expandable evidence. Use **Specification** to inspect the source requirements, **Developer guide** to add a task, and download the JSON or Markdown report from **Results**. New tasks in `verity/tasks/<task-name>/` with a matching `docs/<task-name>.md` appear after a page reload; no UI code changes are required.
+
+The audit API executes project-owned check files and writes reports to this checkout. Run this dashboard only for a project you trust. It requires a writable, persistent Node.js process with dependencies installed; a static host or a serverless deployment with a read-only filesystem cannot execute the CLI runner. The browser cannot read a visitor's local repository from a remotely hosted site. To audit another project, install Verity there and run its dashboard locally.
 
 Exit codes: `0` = all VERIFIED · `1` = one or more FAILED · `2` = none failed but one or more UNCERTAIN.
 

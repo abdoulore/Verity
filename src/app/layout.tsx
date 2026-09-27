@@ -1,14 +1,10 @@
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Verity Sample App",
-  description: "Deliberately incomplete sample for the Verity demo",
+  title: "Verity | Requirement audits",
+  description: "Run acceptance checks against working code and inspect the evidence behind every verdict.",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
-  return (
-    <html lang="en">
-      <body>{children}</body>
-    </html>
-  );
+  return <html lang="en"><body>{children}</body></html>;
 }

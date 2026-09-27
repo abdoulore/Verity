@@ -16,6 +16,7 @@ function download(filename: string, content: string, type: string) {
 
 export default function Home() {
   const [tasks, setTasks] = useState<Task[]>([]);
+  const [mode, setMode] = useState<"hosted" | "local">("local");
   const [selected, setSelected] = useState("admin-csv-export");
   const [run, setRun] = useState<Run | null>(null);
   const [busy, setBusy] = useState(false);
@@ -27,7 +28,7 @@ export default function Home() {
     fetch("/api/verity").then(async response => {
       if (!response.ok) throw new Error("Could not load tasks.");
       return response.json();
-    }).then(data => { setTasks(data.tasks); if (data.tasks.length) setSelected(data.tasks[0].name); }).catch(err => setError(err.message));
+    }).then(data => { setTasks(data.tasks); setMode(data.mode); if (data.tasks.length) setSelected(data.tasks[0].name); }).catch(err => setError(err.message));
   }, []);
   const task = tasks.find(item => item.name === selected);
   const report = run?.report;
@@ -52,7 +53,7 @@ export default function Home() {
             <span className="task-glyph">{item.name === "admin-csv-export" ? "↗" : item.name === "pagination-api" ? "≡" : "{}"}</span><span>{item.title}</span><span className="task-count">{item.criteria.length}</span>
           </button>)}
         </nav>
-        <div className="sidebar-bottom"><div className="sidebar-note"><span className="pulse"/> LOCAL PROJECT<br/><small>Checks execute against this checkout.</small></div><a href="https://github.com/abdoulore/Verity" target="_blank" rel="noreferrer">View repository <span>↗</span></a></div>
+        <div className="sidebar-bottom"><div className="sidebar-note"><span className="pulse"/> {mode === "hosted" ? "HOSTED DEMO" : "LOCAL PROJECT"}<br/><small>{mode === "hosted" ? "Checks run against the deployed sample." : "Checks execute against this checkout."}</small></div><a href="https://github.com/abdoulore/Verity" target="_blank" rel="noreferrer">View repository <span>↗</span></a></div>
       </aside>
       <main className="workspace">
         <header className="topbar"><span>WORKSPACE <b>/</b> AUDITS <b>/</b> <strong>{task?.title ?? "Loading"}</strong></span><span className="topbar-right">VERITY <span className="version">v0.1</span></span></header>
@@ -67,7 +68,7 @@ export default function Home() {
             {!report ? <div className="empty"><div className="empty-icon">⌕</div><h2>Ready to verify.</h2><p>Select an audit and run its checks to see criterion level verdicts and evidence from the actual code.</p><button onClick={audit} disabled={busy || !task}>Run this audit →</button></div> : results.length ? <div className="result-list">{results.map((item: CriterionResult, index) => <article className={`result-card ${item.status.toLowerCase()}`} key={`${item.id}-${index}`}><button className="result-toggle" onClick={() => setExpanded(expanded === `${item.id}-${index}` ? null : `${item.id}-${index}`)} aria-expanded={expanded === `${item.id}-${index}`}><span className="result-id">{item.id}</span><span className="result-title">{item.text}</span><span className={`badge ${item.status.toLowerCase()}`}><span className="badge-dot"/>{item.status}</span><span className="chevron">{expanded === `${item.id}-${index}` ? "−" : "+"}</span></button>{expanded === `${item.id}-${index}` && <div className="result-details"><p className="reason">{item.reason}</p><h3>EVIDENCE <span>{item.evidence.length}</span></h3>{item.evidence.length ? item.evidence.map((evidence, i) => <div className="evidence" key={i}><strong>{evidence.description}</strong>{evidence.filePath && <code>{evidence.filePath}</code>}{evidence.snippet && <pre>{evidence.snippet}</pre>}</div>) : <p>No evidence was returned by this check.</p>}</div>}</article>)}</div> : <div className="empty short">No results match this filter.</div>}
           </>}
           {tab === "spec" && <section className="document"><div className="document-top"><span>SOURCE DOCUMENT</span><code>{task?.specFile}</code></div><pre>{task?.spec || "Specification unavailable."}</pre></section>}
-          {tab === "guide" && <section className="guide"><div className="guide-intro"><span className="guide-number">01 / 03</span><h2>Bring your own feature.</h2><p>Verity runs inside a developer&apos;s project. The browser dashboard uses the same runner as the CLI and reads specifications and check files from this checkout.</p></div><div className="guide-step"><span>01</span><div><h3>Define the requirement</h3><p>Create <code>docs/my-task.md</code>. Write each acceptance criterion under a heading such as <code>### AC-01</code>.</p></div></div><div className="guide-step"><span>02</span><div><h3>Write executable checks</h3><p>Add one check per criterion in <code>verity/tasks/my-task/</code>. Each check must execute the code and return a verdict with evidence. Ask IBM Bob to help draft the checks, then review them.</p></div></div><div className="guide-step"><span>03</span><div><h3>Run and inspect</h3><p>Run <code>node --import tsx verity/run.ts --task my-task</code>, or open this dashboard locally and select your new task. Missing checks are marked UNCERTAIN.</p></div></div><div className="guide-footer">VERIFIED = the check passed · FAILED = the check found a mismatch · UNCERTAIN = the requirement could not be confirmed.</div></section>}
+          {tab === "guide" && <section className="guide"><div className="guide-intro"><span className="guide-number">01 / 03</span><h2>Bring your own feature.</h2><p>{mode === "hosted" ? "This public demo runs bundled checks against its deployed sample code. To check your own project, install Verity in that project and run the CLI or dashboard locally." : "Verity runs inside a developer’s project. The browser dashboard uses the same runner as the CLI and reads specifications and check files from this checkout."}</p></div><div className="guide-step"><span>01</span><div><h3>Define the requirement</h3><p>Create <code>docs/my-task.md</code>. Write each acceptance criterion under a heading such as <code>### AC-01</code>.</p></div></div><div className="guide-step"><span>02</span><div><h3>Write executable checks</h3><p>Add one check per criterion in <code>verity/tasks/my-task/</code>. Each check must execute the code and return a verdict with evidence. Ask IBM Bob to help draft the checks, then review them.</p></div></div><div className="guide-step"><span>03</span><div><h3>Run and inspect</h3><p>Run <code>node --import tsx verity/run.ts --task my-task</code>, or open the dashboard locally and select your new task. Missing checks are marked UNCERTAIN.</p></div></div><div className="guide-footer">VERIFIED = the check passed · FAILED = the check found a mismatch · UNCERTAIN = the requirement could not be confirmed.</div></section>}
           <footer>VERITY <span>·</span> REQUIREMENTS, CHECKED AGAINST CODE <span className="footer-right">Built with IBM Bob IDE</span></footer>
         </div>
       </main>

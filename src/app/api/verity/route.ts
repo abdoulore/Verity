@@ -36,7 +36,7 @@ async function tasks() {
 }
 
 export async function GET() {
-  try { return NextResponse.json({ tasks: await tasks() }); }
+  try { return NextResponse.json({ tasks: await tasks(), mode: hosted ? "hosted" : "local" }); }
   catch { return NextResponse.json({ error: "Could not read this project's tasks." }, { status: 500 }); }
 }
 
